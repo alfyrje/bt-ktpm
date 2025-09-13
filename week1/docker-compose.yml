@@ -1,0 +1,7 @@
+version: "3"
+services:
+  practice-desktop:
+    build: .
+    ports:
+      - "2222:22"
+      - "5901:5901"
