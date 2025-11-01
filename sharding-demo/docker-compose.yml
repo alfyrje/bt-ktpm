@@ -1,0 +1,43 @@
+version: "3"
+services:
+  router:
+    build: ./backend-router
+    ports:
+      - "8000:8000"
+    depends_on:
+      - shard1
+      - shard2
+      - shard3
+  shard1:
+    build: ./shard-template
+    environment:
+      DB_PATH: /data/shard1.db
+      SHARD_NAME: shard1
+    volumes:
+      - ./shard-data:/data
+    ports:
+      - "8001:8000"
+  shard2:
+    build: ./shard-template
+    environment:
+      DB_PATH: /data/shard2.db
+      SHARD_NAME: shard2
+    volumes:
+      - ./shard-data:/data
+    ports:
+      - "8002:8000"
+  shard3:
+    build: ./shard-template
+    environment:
+      DB_PATH: /data/shard3.db
+      SHARD_NAME: shard3
+    volumes:
+      - ./shard-data:/data
+    ports:
+      - "8003:8000"
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - router
