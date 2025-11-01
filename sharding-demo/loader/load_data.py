@@ -2,6 +2,7 @@ import pandas as pd
 import requests
 import sqlite3
 import os
+import hashlib
 
 URL = 'https://raw.githubusercontent.com/zygmuntz/goodbooks-10k/master/books.csv'
 SPLIT = 3
@@ -11,6 +12,7 @@ res = requests.get(URL)
 open('books.csv','wb').write(res.content)
 df = pd.read_csv('books.csv')
 df = df[['book_id','goodreads_book_id','title','authors','original_publication_year','average_rating']]
+
 for i in range(SPLIT):
     path = os.path.join(OUT_DIR, f'shard{i+1}.db')
     conn = sqlite3.connect(path)
@@ -20,7 +22,10 @@ for i in range(SPLIT):
 
 for idx,row in df.iterrows():
     key = int(row['book_id'])
-    sid = key % SPLIT
+    
+    h = int(hashlib.sha1(str(key).encode()).hexdigest(), 16)
+    sid = h % SPLIT
+    
     db = os.path.join(OUT_DIR, f'shard{sid+1}.db')
     conn = sqlite3.connect(db)
     conn.execute('''INSERT OR REPLACE INTO books (book_id,goodreads_book_id,title,authors,original_publication_year,average_rating) VALUES (?,?,?,?,?,?)''',

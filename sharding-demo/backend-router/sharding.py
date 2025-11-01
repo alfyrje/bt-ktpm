@@ -11,6 +11,9 @@ class Sharder:
     def set_strategy(self, s: str):
         self.strategy = s
 
+    def modulo_shard(self, key: int) -> int:
+        return key % self.n
+
     def hash_shard(self, key: int) -> int:
         h = int(hashlib.sha1(str(key).encode()).hexdigest(), 16)
         return h % self.n
@@ -23,10 +26,12 @@ class Sharder:
         return self.lookup.get(key, -1)
 
     def which_shard(self, key: int) -> int:
+        if self.strategy == "modulo":
+            return self.modulo_shard(key)
         if self.strategy == "hash":
             return self.hash_shard(key)
         if self.strategy == "range":
             return self.range_shard(key)
         if self.strategy == "lookup":
             return self.lookup_shard(key)
-        return self.hash_shard(key)
+        return self.modulo_shard(key)

@@ -4,8 +4,17 @@ import httpx
 import time
 import json
 from sharding import Sharder
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 with open('shard_map.json') as f:
     SHARD_CFG = json.load(f)

@@ -25,8 +25,8 @@ export default function QueryPanel({onDone}){
 
   return <div style={{marginTop:20}}>
     <input value={id} onChange={e=>setId(e.target.value)} placeholder="book_id" />
-    <button onClick={run}>Query Sharded</button>
-    <button onClick={compare}>Compare with Full</button>
+    <button onClick={run}>Query sharded</button>
+    <button onClick={compare}>Compare with full query</button>
     <div style={{marginTop:10}}>
       <pre>{JSON.stringify(res,null,2)}</pre>
     </div>
