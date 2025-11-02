@@ -22,6 +22,8 @@ with open('shard_map.json') as f:
 SHARDS = {int(k):v for k,v in SHARD_CFG['shards'].items()}
 sharder = Sharder(SHARDS)
 
+DISABLED_SHARDS = set()
+
 class Strategy(BaseModel):
     strategy: str
 
@@ -30,6 +32,10 @@ async def get_book(book_id: int):
     sid = sharder.which_shard(book_id)
     if sid == -1:
         raise HTTPException(status_code=404, detail='Not found in lookup')
+    
+    if sid in DISABLED_SHARDS:
+        raise HTTPException(status_code=503, detail=f"Shard {sid} is currently disabled")
+    
     url = SHARDS[sid]
     start = time.time()
     try:
@@ -46,16 +52,25 @@ async def distribution():
     async with httpx.AsyncClient() as client:
         for sid,u in SHARDS.items():
             try:
-                r = await client.get(f"{u}/count")
-                out[sid] = r.json()
+                if sid in DISABLED_SHARDS:
+                    out[sid] = {'error': 'disabled', 'count': 0, 'status': 'disabled'}
+                else:
+                    r = await client.get(f"{u}/count")
+                    result = r.json()
+                    result['status'] = 'active'
+                    out[sid] = result
             except Exception:
-                out[sid] = {'error': 'unavailable'}
+                out[sid] = {'error': 'unavailable', 'count': 0, 'status': 'error'}
     return out
 
 @app.post('/strategy')
 async def set_strategy(s: Strategy):
     sharder.set_strategy(s.strategy)
     return {"strategy": s.strategy}
+
+@app.get('/strategy')
+async def get_strategy():
+    return {"strategy": sharder.strategy}
 
 @app.get('/compare/{book_id}')
 async def compare(book_id: int):
@@ -69,8 +84,31 @@ async def compare(book_id: int):
     res = await get_book(book_id)
     return {"sharded": res, "full_time_ms": t_full}
 
-@app.post('/toggle_shard/{sid}')
-async def toggle_shard(sid: int):
+@app.post('/shard/{sid}/disable')
+async def disable_shard(sid: int):
     if sid not in SHARDS:
-        raise HTTPException(status_code=404)
-    return {"toggled": sid}
+        raise HTTPException(status_code=404, detail="Shard not found")
+    DISABLED_SHARDS.add(sid)
+    return {"message": f"Shard {sid} disabled", "disabled_shards": list(DISABLED_SHARDS)}
+
+@app.post('/shard/{sid}/enable')
+async def enable_shard(sid: int):
+    if sid not in SHARDS:
+        raise HTTPException(status_code=404, detail="Shard not found")
+    DISABLED_SHARDS.discard(sid)
+    return {"message": f"Shard {sid} enabled", "disabled_shards": list(DISABLED_SHARDS)}
+
+@app.get('/shards/status')
+async def get_shards_status():
+    status = {}
+    async with httpx.AsyncClient() as client:
+        for sid, url in SHARDS.items():
+            if sid in DISABLED_SHARDS:
+                status[sid] = {"status": "disabled", "url": url}
+            else:
+                try:
+                    r = await client.get(f"{url}/health", timeout=2.0)
+                    status[sid] = {"status": "active", "url": url}
+                except Exception:
+                    status[sid] = {"status": "error", "url": url}
+    return status
