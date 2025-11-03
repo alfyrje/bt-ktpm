@@ -4,5 +4,5 @@
     "1": "http://shard2:8000",
     "2": "http://shard3:8000"
   },
-  "full_db": "shard1:8000"
+  "full_db": "fulldb:8000"
 }

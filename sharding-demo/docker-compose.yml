@@ -8,6 +8,7 @@ services:
       - shard1
       - shard2
       - shard3
+      - fulldb
   shard1:
     build: ./shard-template
     environment:
@@ -35,6 +36,15 @@ services:
       - ./shard-data:/data
     ports:
       - "8003:8000"
+  fulldb:
+    build: ./shard-template
+    environment:
+      DB_PATH: /data/full.db
+      SHARD_NAME: fulldb
+    volumes:
+      - ./shard-data:/data
+    ports:
+      - "8004:8000"
   frontend:
     build: ./frontend
     ports:
